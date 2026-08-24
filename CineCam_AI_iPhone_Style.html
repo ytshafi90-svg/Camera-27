@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#000000">
+<title>CineCam AI</title>
+<style>
+:root{--yellow:#f4d21f;--panel:#26272a;--glass:rgba(35,36,39,.82);--muted:#aaa}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;overflow:hidden}
+button,input{font:inherit}
+.app{width:100%;height:100%;max-width:620px;margin:auto;background:#000;position:relative;overflow:hidden}
+.camera{position:absolute;inset:0;background:#111}
+video{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+.topbar{position:absolute;top:0;left:0;right:0;height:88px;padding:22px 14px 0;display:flex;justify-content:space-between;align-items:flex-start;z-index:20;background:linear-gradient(#000b,transparent)}
+.pill{height:34px;border-radius:18px;background:#202124d9;border:1px solid #ffffff12;color:#fff;display:flex;align-items:center;padding:0 13px;font-size:12px}
+.topright{display:flex;gap:8px}.circle{width:36px;height:36px;border-radius:50%;border:0;background:#202124d9;color:#fff;font-size:17px}
+.grid{position:absolute;inset:0;pointer-events:none;z-index:4;background:linear-gradient(90deg,transparent 33.2%,#fff3 33.4%,transparent 33.6%,transparent 66.4%,#fff3 66.6%,transparent 66.8%),linear-gradient(0deg,transparent 33.2%,#fff3 33.4%,transparent 33.6%,transparent 66.4%,#fff3 66.6%,transparent 66.8%)}
+.focus{position:absolute;width:54px;height:54px;border:1px solid #fff8;border-radius:50%;left:50%;top:43%;transform:translate(-50%,-50%);z-index:5;opacity:.8}
+.zoomrow{position:absolute;bottom:184px;left:0;right:0;display:flex;justify-content:center;gap:5px;z-index:15}
+.zoom{background:transparent;border:0;color:#eee;width:38px;height:34px;border-radius:18px;font-size:12px}
+.zoom.active{background:#222b;color:var(--yellow);font-weight:700}
+.controls{position:absolute;left:0;right:0;bottom:0;z-index:30;padding:0 14px 17px;background:linear-gradient(transparent,#000 24%,#000 100%)}
+.modes{display:flex;justify-content:center;gap:18px;overflow-x:auto;scrollbar-width:none;padding:23px 4px 13px}
+.modes::-webkit-scrollbar{display:none}
+.mode{background:none;border:0;color:#bbb;font-size:13px;white-space:nowrap}
+.mode.active{color:var(--yellow);font-weight:700}
+.bottom{display:flex;align-items:center;justify-content:center;gap:25px}
+.thumb{width:46px;height:46px;border-radius:50%;border:2px solid #fff8;background:#252525;overflow:hidden;padding:0}
+.thumb img{width:100%;height:100%;object-fit:cover;display:none}
+.shutter{width:76px;height:76px;border-radius:50%;background:#fff;border:5px solid #aaa;box-shadow:0 0 0 2px #222}
+.shutter.rec{background:#e33;border-color:#fff}
+.switch{width:46px;height:46px;border-radius:50%;border:0;background:#202124;color:#fff;font-size:20px}
+.drawer{position:absolute;left:7%;right:7%;bottom:120px;z-index:40;background:rgba(38,39,42,.94);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-radius:28px;padding:18px 18px 16px;display:none;box-shadow:0 12px 50px #000b}
+.drawer.show{display:block}
+.drawergrid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px 8px;text-align:center}
+.drawerbtn{border:0;background:none;color:#fff;display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11px}
+.drawericon{width:52px;height:52px;border-radius:50%;background:#ffffff12;border:1px solid #fff2;display:grid;place-items:center;font-size:22px}
+.drawerbtn.active .drawericon{color:var(--yellow);border-color:#fff3}
+.drawerbtn.active{color:#fff}
+.drawerlabel{color:#bbb}
+.drawerselect{margin-top:15px;background:#17181a;border-radius:15px;padding:10px;display:flex;justify-content:space-between;font-size:11px;color:#ddd}
+.settings{position:absolute;left:7%;right:7%;bottom:118px;z-index:42;background:rgba(38,39,42,.97);border-radius:24px;padding:16px;display:none}
+.settings.show{display:block}
+.setrow{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #fff1;font-size:12px}
+.setrow:last-child{border:0}.setrow input{width:55%}
+.ai{position:absolute;inset:0;background:#050505;z-index:100;display:none;align-items:center;justify-content:center;flex-direction:column}
+.ai.show{display:flex}
+.aiLogo{font-size:28px;font-weight:800}.aiLogo span{color:var(--yellow)}
+.aiSub{color:#aaa;font-size:12px;margin-top:8px}
+.aiRing{width:76px;height:76px;border-radius:50%;border:3px solid #333;border-top-color:var(--yellow);animation:spin 1s linear infinite;margin-bottom:22px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.aiBar{width:70%;height:5px;background:#252525;border-radius:5px;margin-top:16px;overflow:hidden}.aiBar i{display:block;width:0;height:100%;background:var(--yellow);transition:.1s}
+.result{position:absolute;inset:0;background:#000;z-index:110;display:none;overflow:auto;padding:25px 15px 30px}.result.show{display:block}.result img{width:100%;border-radius:18px;display:block}.resulttop{display:flex;justify-content:space-between;align-items:center;margin:5px 0 14px}.aiTag{color:var(--yellow);font-weight:700;font-size:13px}.result button{border:0;border-radius:13px;padding:11px 15px;background:#fff;color:#000}.rowbtn{display:flex;gap:8px;margin-top:12px}.rowbtn button{flex:1}
+#file{display:none}
+.toast{position:absolute;top:94px;left:50%;transform:translateX(-50%);background:#222d;padding:9px 14px;border-radius:20px;font-size:11px;z-index:200;display:none}
+.toast.show{display:block}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="camera">
+<video id="video" autoplay playsinline muted></video>
+<div class="grid"></div><div class="focus"></div>
+</div>
+
+<div class="topbar">
+<div class="pill" id="formatBtn">JPEG <small style="margin-left:4px;color:#aaa">24</small></div>
+<div class="topright"><button class="circle" id="settingsBtn">⚙</button><button class="circle" id="moreBtn">•••</button></div>
+</div>
+
+<div class="zoomrow" id="zoomrow"></div>
+
+<div class="drawer" id="drawer">
+<div class="drawergrid">
+<button class="drawerbtn" id="flashBtn"><span class="drawericon">ϟ</span><span class="drawerlabel">FLASH</span></button>
+<button class="drawerbtn" id="liveBtn"><span class="drawericon">◎</span><span class="drawerlabel">LIVE</span></button>
+<button class="drawerbtn" id="timerBtn"><span class="drawericon">◷</span><span class="drawerlabel">TIMER</span></button>
+<button class="drawerbtn" id="exposureBtn"><span class="drawericon">±</span><span class="drawerlabel">EXPOSURE</span></button>
+<button class="drawerbtn active" id="stylesBtn"><span class="drawericon">▱</span><span class="drawerlabel">STYLES</span></button>
+<button class="drawerbtn" id="filterBtn"><span class="drawericon">◯</span><span class="drawerlabel">FILTER</span></button>
+<button class="drawerbtn" id="aspectBtn"><span class="drawericon">▣</span><span class="drawerlabel">ASPECT</span></button>
+<button class="drawerbtn" id="qualityBtn"><span class="drawericon">24</span><span class="drawerlabel">QUALITY</span></button>
+<button class="drawerbtn" id="blurBtn"><span class="drawericon">◌</span><span class="drawerlabel">BLUR</span></button>
+</div>
+<div class="drawerselect"><span id="drawerInfo">JPEG • 24 MP</span><span id="drawerValue">AUTO ›</span></div>
+</div>
+
+<div class="settings" id="settings">
+<div class="setrow"><span>Exposure</span><input id="exposure" type="range" min="-2" max="2" step=".1" value="0"></div>
+<div class="setrow"><span>Portrait Blur</span><input id="blur" type="range" min="0" max="18" step=".5" value="7"></div>
+<div class="setrow"><span>AI Enhancement</span><b style="color:#f4d21f">ON</b></div>
+<div class="setrow"><span>Stabilization</span><b>ON</b></div>
+<div class="setrow"><span>Video Quality</span><b>4K / 60</b></div>
+</div>
+
+<div class="controls">
+<div class="modes" id="modes"></div>
+<div class="bottom">
+<button class="thumb" id="gallery"><img id="thumbImg"></button>
+<button class="shutter" id="shutter"></button>
+<button class="switch" id="flip">↻</button>
+</div>
+</div>
+
+<div class="ai" id="ai">
+<div class="aiRing"></div>
+<div class="aiLogo">Cine<span>Cam</span> AI</div>
+<div class="aiSub" id="aiText">Analyzing photo...</div>
+<div class="aiBar"><i id="aiBar"></i></div>
+</div>
+
+<div class="result" id="result">
+<div class="resulttop"><div><div class="aiTag">✨ AI ENHANCED</div><div style="font-size:11px;color:#999;margin-top:3px" id="resultInfo">24 MP • Enhanced</div></div><button id="closeResult">Done</button></div>
+<img id="resultImg">
+<div class="rowbtn"><button id="save">Save Photo</button><button id="retake">Retake</button></div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input id="file" type="file" accept="image/*">
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+let stream=null,facing="environment",zoom=1,mode="Photo",timer=0,live=false,flash=false,blob=null,recorder=null,chunks=[],recording=false;
+
+const modes=["Portrait","Photo","Macro","360°","Video","Cinematic Video","Supermoon"];
+const zooms=[0.5,1,2,3,5,10,20];
+function toast(t){$("toast").textContent=t;$("toast").classList.add("show");setTimeout(()=>$("toast").classList.remove("show"),1500)}
+function render(){
+ $("modes").innerHTML=modes.map(m=>`<button class="mode ${m===mode?'active':''}">${m}</button>`).join("");
+ $("zoomrow").innerHTML=zooms.map(z=>`<button class="zoom ${z===zoom?'active':''}" data-z="${z}">${z}×</button>`).join("");
+ document.querySelectorAll(".mode").forEach(b=>b.onclick=()=>{mode=b.textContent;render()});
+ document.querySelectorAll(".zoom").forEach(b=>b.onclick=()=>{zoom=+b.dataset.z;applyZoom();render()});
+}
+render();
+
+async function startCamera(){
+ try{
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:facing},width:{ideal:3840},height:{ideal:2160}},audio:true});
+  $("video").srcObject=stream;applyZoom();
+ }catch(e){toast("Allow camera permission");}
+}
+startCamera();
+
+function applyZoom(){
+ $("video").style.transform=`scale(${Math.max(1,zoom)})`;
+ const track=stream?.getVideoTracks?.()[0],cap=track?.getCapabilities?.();
+ if(cap?.zoom && zoom<=cap.zoom.max)track.applyConstraints({advanced:[{zoom}]}).catch(()=>{});
+}
+$("flip").onclick=()=>{facing=facing==="environment"?"user":"environment";startCamera()};
+$("moreBtn").onclick=()=>$("drawer").classList.toggle("show");
+$("settingsBtn").onclick=()=>$("settings").classList.toggle("show");
+$("formatBtn").onclick=()=>toast("JPEG • 24 MP");
+$("flashBtn").onclick=()=>{flash=!flash;$("flashBtn").classList.toggle("active",flash);toast(flash?"Flash ON":"Flash OFF")};
+$("liveBtn").onclick=()=>{live=!live;$("liveBtn").classList.toggle("active",live);toast(live?"Live Photo ON":"Live Photo OFF")};
+$("timerBtn").onclick=()=>{timer=timer===0?3:timer===3?10:0;toast(timer?`Timer ${timer}s`:"Timer OFF")};
+$("qualityBtn").onclick=()=>toast("24 MP • 4K/60 video");
+$("aspectBtn").onclick=()=>toast("Aspect 4:3");
+$("filterBtn").onclick=()=>toast("Vivid • Natural • Warm • Cool");
+$("stylesBtn").onclick=()=>toast("Style: Standard");
+$("blurBtn").onclick=()=>toast("Portrait Blur adjustable in Settings");
+$("exposureBtn").onclick=()=>{$("settings").classList.add("show");$("exposure").focus()};
+$("gallery").onclick=()=>$("file").click();
+
+$("shutter").onclick=async()=>{
+ if(mode==="Video"||mode==="Cinematic Video")return recording?stopVideo():startVideo();
+ if(timer){toast(`Taking photo in ${timer}...`);await new Promise(r=>setTimeout(r,timer*1000))}
+ takePhoto();
+};
+
+async function takePhoto(){
+ if(!stream)return;
+ const v=$("video"),c=document.createElement("canvas");
+ c.width=v.videoWidth||1920;c.height=v.videoHeight||1080;
+ const x=c.getContext("2d");
+ const ev=+$("exposure").value;
+ x.filter=`brightness(${100+ev*9}%) contrast(108%) saturate(110%)`;
+ x.drawImage(v,0,0,c.width,c.height);x.filter="none";
+ if(mode==="Supermoon")moonEnhance(x,c);
+ await aiEnhance(c);
+}
+
+function moonEnhance(x,c){
+ x.globalAlpha=.15;x.filter="contrast(180%) brightness(105%)";x.drawImage(c,0,0);x.globalAlpha=1;x.filter="none";
+}
+
+async function aiEnhance(c){
+ $("ai").style.display="flex";
+ const bar=$("aiBar"),text=$("aiText");
+ const steps=[
+  [15,"Analyzing scene..."],[30,"Detecting subject..."],[48,"Recovering details..."],
+  [65,"Enhancing colors..."],[82,"Improving sharpness..."],[94,"Applying cinematic tone..."],[100,"AI enhancement complete"]
+ ];
+ for(const [p,t] of steps){await new Promise(r=>setTimeout(r,220));bar.style.width=p+"%";text.textContent=t}
+ const ctx=c.getContext("2d"),im=ctx.getImageData(0,0,c.width,c.height),d=im.data;
+ for(let i=0;i<d.length;i+=4){
+   d[i]=Math.min(255,Math.max(0,(d[i]-128)*1.10+128));
+   d[i+1]=Math.min(255,Math.max(0,(d[i+1]-128)*1.10+128));
+   d[i+2]=Math.min(255,Math.max(0,(d[i+2]-128)*1.10+128));
+ }
+ ctx.putImageData(im,0,0);
+ if(mode==="Portrait"){
+   const b=document.createElement("canvas");b.width=c.width;b.height=c.height;const bx=b.getContext("2d");
+   bx.filter=`blur(${$("blur").value}px)`;bx.drawImage(c,0,0);ctx.globalAlpha=.14;ctx.drawImage(b,0,0);ctx.globalAlpha=1;
+ }
+ c.toBlob(b=>{blob=b;$("resultImg").src=URL.createObjectURL(b);$("resultInfo").textContent=(mode==="Supermoon"?"Supermoon AI • ":"Portrait AI • ")+"Enhanced";$("ai").style.display="none";$("result").classList.add("show");$("thumbImg").src=URL.createObjectURL(b);$("thumbImg").style.display="block"},"image/jpeg",.97);
+}
+
+$("closeResult").onclick=()=>$("result").classList.remove("show");
+$("retake").onclick=()=>$("result").classList.remove("show");
+$("save").onclick=()=>{if(!blob)return;const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="CineCam-AI-Enhanced.jpg";a.click()};
+
+function startVideo(){
+ chunks=[];const type=MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")?"video/webm;codecs=vp9,opus":"video/webm";
+ recorder=new MediaRecorder(stream,{mimeType:type});recorder.ondataavailable=e=>e.data.size&&chunks.push(e.data);
+ recorder.onstop=()=>{const b=new Blob(chunks,{type});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=mode==="Cinematic Video"?"CineCam-Cinematic.webm":"CineCam-4K60.webm";a.click();recording=false;$("shutter").classList.remove("rec");toast("Video saved")};
+ recorder.start();recording=true;$("shutter").classList.add("rec");toast("Recording...");
+}
+function stopVideo(){recorder?.stop()}
+
+$("file").onchange=e=>{
+ const f=e.target.files[0];if(!f)return;
+ const im=new Image();im.onload=()=>{const c=document.createElement("canvas");c.width=im.naturalWidth;c.height=im.naturalHeight;c.getContext("2d").drawImage(im,0,0);aiEnhance(c)};im.src=URL.createObjectURL(f);
+};
+</script>
+</body>
+</html>
